@@ -12,31 +12,20 @@ using namespace affdex;
 bool done = false;
 std::ofstream outputFile;
 std::string filename = "affectiva_data.csv";
-bool yes = false;
-
-class FaceList:public FaceListener
-{
-	void onFaceFound(float timestamp, FaceId faceId){
-		//std::cout<<faceId<<" face found!"<<std::endl;
-	}
-	void onFaceLost(float timestamp, FaceId faceId){
-		//std::cout<<timestamp<<" face LOST!"<<std::endl;
-	}
-};
+bool noprint_header = false;
 
 class ImageList: public ImageListener{
 	
 	virtual void onImageResults(std::map<FaceId, Face> faces, Frame image) {
-		//std::cout<<"result "<<image.getTimestamp()<<std::endl;
+		
 		std::map<FaceId, Face>::iterator it;
-		if (!yes){
+		if (!noprint_header){
 			outputFile <<"Timestamp,Engagement,Attention,Valence,Joy,Sadness,Anger\n";
-			yes = true;
+			noprint_header = true;
 		}
 		float t = image.getTimestamp();
 		for(it = faces.begin(); it!= faces.end(); it++)
 		{	
-
 			outputFile << t<<", ";
 			outputFile << it->second.emotions.engagement<< ", ";
 			outputFile << it->second.expressions.attention<< ", ";
@@ -44,13 +33,13 @@ class ImageList: public ImageListener{
 			outputFile << it->second.emotions.joy<< ",";
 			outputFile << it->second.emotions.sadness<< ",";
 			outputFile << it->second.emotions.anger<< "\n";
-			std::cout<<it->second.appearance.ethnicity<<"\n";
-		}	
+		}
+		
 	}
     
     virtual void onImageCapture(Frame image){
-		//std::cout<<"capture "<<image.getTimestamp()<<std::endl;
     }
+
 
 };
 
@@ -68,6 +57,7 @@ class MyListener:public ProcessStatusListener
     }
 };
 
+
 int main(int argc, char** argsv)
 {
 	//VideoDetector takes parameters: frame rate, max num faces, face configuration
@@ -81,16 +71,18 @@ int main(int argc, char** argsv)
 	detector.setClassifierPath(classifierPath);
 
 	//set the listener for VideoDetector
-	std::shared_ptr<FaceListener> psl(new FaceList());
-	detector.setFaceListener(psl.get());
 	std::shared_ptr<ProcessStatusListener> ps2(new MyListener());
 	detector.setProcessStatusListener(ps2.get());
 	std::shared_ptr<ImageListener> ps3(new ImageList());
 	detector.setImageListener(ps3.get());	
-	//set detector for engagement, valence, attention metrics
+
+	//set detector for desired metrics
 	detector.setDetectEngagement(true);
 	detector.setDetectValence(true);
 	detector.setDetectAttention(true);
+	detector.setDetectJoy(true);
+	detector.setDetectSadness(true);
+	detector.setDetectAnger(true);
 	outputFile.open(filename);
 
 	//start the detector
@@ -98,18 +90,16 @@ int main(int argc, char** argsv)
 
 	//process the video file
 	detector.process(argsv[1]);
-
-	//lol where does the processesd data go? 
-	//stop detector
-	//usleep(1000000000);
 	
 	while(!done){
 	}
+
 	detector.stop();
-	//std::cout << psl->getData();
 
 	outputFile.close();
-	//delete psl;
+
+	//delete ps2;
+	//delete ps3;
 	return 0;
 
 }
